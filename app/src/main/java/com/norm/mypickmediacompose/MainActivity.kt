@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -40,12 +41,20 @@ import com.norm.mypickmediacompose.ui.theme.MyPickMediaComposeTheme
 
 class MainActivity : ComponentActivity() {
 
+    val viewModel: ViewModel by viewModels()
+
     private val pickMedia =
         registerForActivityResult<PickVisualMediaRequest, Uri>(
             ActivityResultContracts.PickVisualMedia()
         ) { uri ->
             if (uri != null) {
                 println(uri.toString())
+                if (viewModel.isVideo) {
+                    viewModel.videoUri = uri
+                    viewModel.isNewVideoPicked.value = true
+                } else {
+                    viewModel.imageUrl.value = uri.toString()
+                }
             }
         }
 
@@ -61,17 +70,17 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(navController = navController, startDestination = "HomeScreen") {
                         composable("HomeScreen") { HomeScreen() }
-                        composable("VideoScreen") { VideoScreen() }
+                        composable("VideoScreen") { VideoScreen(viewModel) }
+                    }
+
+                    if (viewModel.isNewVideoPicked.value) {
+                        viewModel.isNewVideoPicked.value = false
+                        navController.navigate("VideoScreen")
                     }
 
                 }
             }
         }
-    }
-
-    @Composable
-    private fun VideoScreen() {
-        TODO("Not yet implemented")
     }
 
     @Composable
@@ -98,6 +107,7 @@ class MainActivity : ComponentActivity() {
         ) {
             Button(
                 onClick = {
+                    viewModel.isVideo = false
                     pickMedia.launch(
                         PickVisualMediaRequest.Builder()
                             .setMediaType(
@@ -116,6 +126,7 @@ class MainActivity : ComponentActivity() {
 
             Button(
                 onClick = {
+                    viewModel.isVideo = true
                     pickMedia.launch(
                         PickVisualMediaRequest.Builder()
                             .setMediaType(
@@ -139,7 +150,7 @@ class MainActivity : ComponentActivity() {
 
         val imageState: AsyncImagePainter.State = rememberAsyncImagePainter(
             model = ImageRequest.Builder(LocalContext.current)
-                .data("xxx")
+                .data(viewModel.imageUrl.value)
                 .size(Size.ORIGINAL)
                 .build()
         ).state
